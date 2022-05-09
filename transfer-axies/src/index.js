@@ -82,7 +82,7 @@ const giftAxie = async (
   axieId
 ) => {
   try {
-    console.log(`Attempting to tranfer ${axieId}`);
+    console.log(`Attempting to transfer ${axieId}`);
     const estimatedGas = await axieContract.methods
       .safeTransferFrom(accountAddress, recipientAddress, axieId)
       .estimateGas({ gas: GAS_LIMIT, from: accountAddress });
