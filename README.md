@@ -1,3 +1,8 @@
-# Blockchain Gaming Axie Infinity Tools
+# Blockchain Gaming - Axie Infinity Tools
 
-Copyright © 2022 Blockchain Gaming, Inc. All rights reserved.
+## GitBook for instructions: 
+https://axie-tools.blockchaingaming.xyz/
+
+## Brought to you by:
+Blockchain Gaming, the most comprehensive platform for web3 gaming guilds to manage assets and scale communities.
+https://blockchaingaming.xyz/
