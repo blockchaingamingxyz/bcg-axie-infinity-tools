@@ -18,7 +18,10 @@
   },
   "homepage": "https://github.com/blockchaingamingxyz/bcg-axie-infinity-tools#readme",
   "dependencies": {
+    "core-js": "^3.22.7",
     "csv": "^6.0.5",
+    "csv-parse": "^5.1.0",
+    "csv-stringify": "^6.1.0",
     "web3": "^1.7.3"
   }
 }
