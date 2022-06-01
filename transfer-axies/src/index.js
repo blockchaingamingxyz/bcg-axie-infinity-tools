@@ -2,8 +2,11 @@
 
 import * as fs from "fs";
 import { parse } from "csv-parse/sync";
-import batchABI from "./abi/ERC721Batch.json" assert { type: "json" };
-import axieABI from "./abi/axie.json" assert { type: "json" };
+const batchABI = JSON.parse(
+  fs.readFileSync("./abi/ERC721Batch.json").toString()
+);
+const axieABI = JSON.parse(fs.readFileSync("./abi/axie.json").toString());
+
 import Web3 from "web3";
 import "core-js";
 
@@ -69,7 +72,9 @@ const transferAxies = async () => {
         recipientAddresses,
         axieIds
       );
-
+      if (batchTransferResult.match("/error/i")) {
+        throw batchTransferResult;
+      }
       console.log(`✔ - ${account} => (${axieIds}) @ ${batchTransferResult}`);
       results.push(`✔ - ${account} => (${axieIds}) @ ${batchTransferResult}`);
     } catch (e) {
