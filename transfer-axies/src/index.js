@@ -21,7 +21,6 @@ const AXIE_ADDRESS = web3.utils.toChecksumAddress(
 );
 const batchContract = new web3.eth.Contract(batchABI, BATCH_ADDRESS);
 const axieContract = new web3.eth.Contract(axieABI, AXIE_ADDRESS);
-const GAS_LIMIT = 1000000;
 const SECRETS_FILE = "../secrets.csv";
 const TRANSFER_FILE = "../transfers.csv";
 const RESULTS_FILE = "../results.csv";
@@ -125,14 +124,9 @@ const batchTransferAxie = async (
     const estimatedGas = await batchContract.methods[
       "safeBatchTransfer(address,uint256[],address[])"
     ](AXIE_ADDRESS, axieIds, recipientAddresses).estimateGas({
-      gas: GAS_LIMIT,
       from: accountAddress,
     });
 
-    if (estimatedGas === GAS_LIMIT) {
-      console.log(`Method ran out of gas for ${axieIds}`);
-      return "Method ran out of gas";
-    }
     txCount = await web3.eth.getTransactionCount(accountAddress);
 
     const myData = batchContract.methods[
