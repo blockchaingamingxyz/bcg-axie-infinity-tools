@@ -19,9 +19,9 @@ const AXIE_ADDRESS = web3.utils.toChecksumAddress(
 const batchContract = new web3.eth.Contract(batchABI, BATCH_ADDRESS);
 const axieContract = new web3.eth.Contract(axieABI, AXIE_ADDRESS);
 const GAS_LIMIT = 1000000;
-const SECRETS_FILE = "../secrets.csv";
-const TRANSFER_FILE = "../transfers.csv";
-const RESULTS_FILE = "../results.csv";
+const SECRETS_FILE = "secrets.csv";
+const TRANSFER_FILE = "transfers.csv";
+const RESULTS_FILE = "results.csv";
 
 const transferAxies = async () => {
   const secretsData = await fs.readFileSync(SECRETS_FILE);
