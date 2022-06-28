@@ -18,9 +18,9 @@ const AXIE_ADDRESS = web3.utils.toChecksumAddress(
 );
 const batchContract = new web3.eth.Contract(batchABI, BATCH_ADDRESS);
 const axieContract = new web3.eth.Contract(axieABI, AXIE_ADDRESS);
-const SECRETS_FILE = "secrets.csv";
-const TRANSFER_FILE = "transfers.csv";
-const RESULTS_FILE = "results.csv";
+const SECRETS_FILE = "../secrets.csv";
+const TRANSFER_FILE = "../transfers.csv";
+const RESULTS_FILE = "../results.csv";
 
 const transferAxies = async () => {
   const secretsData = await fs.readFileSync(SECRETS_FILE);
@@ -65,14 +65,37 @@ const transferAxies = async () => {
       const batchTransferResult = await batchTransferAxie(
         account.replace("ronin:", "0x"),
         privateKey,
-        recipientAddresses,
-        axieIds
+        recipientAddresses.reduce((all, one, i) => {
+          const ch = Math.floor(i / 100);
+          all[ch] = [].concat(all[ch] || [], one);
+          return all;
+        }, []),
+        axieIds.reduce((all, one, i) => {
+          const ch = Math.floor(i / 100);
+          all[ch] = [].concat(all[ch] || [], one);
+          return all;
+        }, [])
       );
-      if (batchTransferResult.match("/error/i")) {
-        throw batchTransferResult;
+      for (const result of batchTransferResult) {
+        const i = batchTransferResult.indexOf(result);
+        let axieIdChunks = axieIds.reduce((all, one, i) => {
+          const ch = Math.floor(i / 100);
+          all[ch] = [].concat(all[ch] || [], one);
+          return all;
+        }, []);
+        try {
+          if (result.match("/error/i")) {
+            throw result;
+          }
+          console.log(`✔ - ${account} => (${axieIdChunks[i]}) @ ${result}`);
+          results.push(`✔ - ${account} => (${axieIdChunks[i]}) @ ${result}`);
+        } catch (e) {
+          console.log(
+            `Transfer failed for ${axieIdChunks[i]} due to the following error: ${e}`
+          );
+          results.push(`❌ - ${account} => (${axieIdChunks[i]}) ${e}`);
+        }
       }
-      console.log(`✔ - ${account} => (${axieIds}) @ ${batchTransferResult}`);
-      results.push(`✔ - ${account} => (${axieIds}) @ ${batchTransferResult}`);
     } catch (e) {
       console.log(
         `Transfer failed for ${account} due to the following error: ${e}`
@@ -88,26 +111,56 @@ const transferAxies = async () => {
 const batchTransferAxie = async (
   accountAddress,
   privateKey,
-  recipientAddresses,
-  axieIds
+  recipientAddressChunks,
+  axieIdChunks
 ) => {
-  try {
-    let txCount = await web3.eth.getTransactionCount(accountAddress);
+  let batchTransferResult = [];
+  for (const recipientAddressChunk of recipientAddressChunks) {
+    const i = recipientAddressChunks.indexOf(recipientAddressChunk);
+    try {
+      let txCount = await web3.eth.getTransactionCount(accountAddress);
 
-    if (
-      (await axieContract.methods
-        .isApprovedForAll(accountAddress, BATCH_ADDRESS)
-        .call()) !== true
-    ) {
-      const myData = axieContract.methods
-        .setApprovalForAll(BATCH_ADDRESS, true)
-        .encodeABI();
+      if (
+        (await axieContract.methods
+          .isApprovedForAll(accountAddress, BATCH_ADDRESS)
+          .call()) !== true
+      ) {
+        const myData = axieContract.methods
+          .setApprovalForAll(BATCH_ADDRESS, true)
+          .encodeABI();
+        const txObject = {
+          chainId: 2020,
+          nonce: txCount,
+          gas: web3.utils.toHex(100000),
+          gasPrice: web3.utils.toHex(web3.utils.toWei("1", "gwei")),
+          to: AXIE_ADDRESS,
+          data: myData,
+        };
+        const signedTx = await web3.eth.accounts.signTransaction(
+          txObject,
+          privateKey
+        );
+        const raw = signedTx["rawTransaction"];
+        await web3.eth.sendSignedTransaction(raw);
+      }
+      console.log(`Attempting to transfer ${axieIdChunks[i]}`);
+      const estimatedGas = await batchContract.methods[
+        "safeBatchTransfer(address,uint256[],address[])"
+      ](AXIE_ADDRESS, axieIdChunks[i], recipientAddressChunk).estimateGas({
+        from: accountAddress,
+      });
+
+      txCount = await web3.eth.getTransactionCount(accountAddress);
+
+      const myData = batchContract.methods[
+        "safeBatchTransfer(address,uint256[],address[])"
+      ](AXIE_ADDRESS, axieIdChunks[i], recipientAddressChunk).encodeABI();
       const txObject = {
         chainId: 2020,
         nonce: txCount,
-        gas: web3.utils.toHex(100000),
+        gas: web3.utils.toHex(estimatedGas),
         gasPrice: web3.utils.toHex(web3.utils.toWei("1", "gwei")),
-        to: AXIE_ADDRESS,
+        to: BATCH_ADDRESS,
         data: myData,
       };
       const signedTx = await web3.eth.accounts.signTransaction(
@@ -115,38 +168,15 @@ const batchTransferAxie = async (
         privateKey
       );
       const raw = signedTx["rawTransaction"];
-      await web3.eth.sendSignedTransaction(raw);
+      batchTransferResult.push(
+        (await web3.eth.sendSignedTransaction(raw))["transactionHash"]
+      );
+    } catch (error) {
+      console.log(`Error transferring ${axieIdChunks[i]}`, error);
+      batchTransferResult.push(error);
     }
-    console.log(`Attempting to transfer ${axieIds}`);
-    const estimatedGas = await batchContract.methods[
-      "safeBatchTransfer(address,uint256[],address[])"
-    ](AXIE_ADDRESS, axieIds, recipientAddresses).estimateGas({
-      from: accountAddress,
-    });
-
-    txCount = await web3.eth.getTransactionCount(accountAddress);
-
-    const myData = batchContract.methods[
-      "safeBatchTransfer(address,uint256[],address[])"
-    ](AXIE_ADDRESS, axieIds, recipientAddresses).encodeABI();
-    const txObject = {
-      chainId: 2020,
-      nonce: txCount,
-      gas: web3.utils.toHex(estimatedGas),
-      gasPrice: web3.utils.toHex(web3.utils.toWei("1", "gwei")),
-      to: BATCH_ADDRESS,
-      data: myData,
-    };
-    const signedTx = await web3.eth.accounts.signTransaction(
-      txObject,
-      privateKey
-    );
-    const raw = signedTx["rawTransaction"];
-    return (await web3.eth.sendSignedTransaction(raw))["transactionHash"];
-  } catch (error) {
-    console.log(`Error transferring ${axieIds}`, error);
-    return error;
   }
+  return batchTransferResult;
 };
 
 transferAxies();
